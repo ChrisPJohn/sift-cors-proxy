@@ -39,9 +39,9 @@ async function handleBatch(request) {
 
         // Pass through User-Agent if present in the batch request
         if (request.headers.has('User-Agent')) {
-           headers['User-Agent'] = request.headers.get('User-Agent');
+          headers['User-Agent'] = request.headers.get('User-Agent');
         } else {
-           headers['User-Agent'] = 'Sift-RSS-Fetcher/1.0';
+          headers['User-Agent'] = 'Sift-RSS-Fetcher/1.0';
         }
 
         const res = await fetch(url, {
@@ -51,7 +51,7 @@ async function handleBatch(request) {
         });
 
         if (!res.ok) {
-           return { url, ok: false, status: res.status, error: res.statusText };
+          return { url, ok: false, status: res.status, error: res.statusText };
         }
 
         const content = await res.text();
@@ -91,6 +91,20 @@ async function handleProxy(request) {
     return new Response('Missing "url" parameter', { status: 400, headers });
   }
 
+  // Sanitize URL: isomorphic-git sometimes strips the protocol or sends it as a path
+  // e.g. "github.com/Start" or "/github.com/..."
+  let finalTargetUrl = targetUrl;
+
+  // Remove leading slash if present (common artifacts from some clients)
+  if (finalTargetUrl.startsWith('/')) {
+    finalTargetUrl = finalTargetUrl.substring(1);
+  }
+
+  if (!finalTargetUrl.startsWith('http://') && !finalTargetUrl.startsWith('https://')) {
+    // Default to HTTPS if protocol is missing
+    finalTargetUrl = 'https://' + finalTargetUrl;
+  }
+
   // Clone original request to preserve headers (especially Authorization for Git)
   const originalHeaders = new Headers(request.headers);
 
@@ -120,10 +134,10 @@ async function handleProxy(request) {
     };
 
     if (request.method !== 'GET' && request.method !== 'HEAD') {
-        fetchOptions.body = request.body;
+      fetchOptions.body = request.body;
     }
 
-    const response = await fetch(targetUrl, fetchOptions);
+    const response = await fetch(finalTargetUrl, fetchOptions);
 
     const newHeaders = new Headers(response.headers);
     addCorsHeaders(newHeaders);
